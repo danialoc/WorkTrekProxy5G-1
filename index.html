@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <title>WorkTrekProxy5G</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap"
+        rel="stylesheet"
+    />
+    <style>
+        /* ------------------------------------- */
+        /* 1. المتغيرات الأساسية (CSS Variables) */
+        /* ------------------------------------- */
+        :root {
+            --primary-color: #4CAF50; /* أخضر للنجاح */
+            --secondary-color: #2196F3; /* أزرق هادئ */
+            --dark-bg: #1a1a2e;
+            --darker-bg: #0f0f1c;
+            --text-color: #ffffff;
+            --border-radius: 10px;
+            --animation-speed: 1.5s;
+
+            /* ألوان النار */
+            --fire-color-base: #ff4500;
+            --fire-color-mid: #ffa500;
+            --fire-color-top: #ffd700;
+
+            /* أحجام العناصر الجانبية (التي ستحتوي على الأنميشنات) */
+            --explosion-area-width-mobile: 40vw;
+            --explosion-area-height-mobile: 40vw; /* لجعلها مربعة ومتناسبة */
+            --explosion-area-width-desktop: 250px;
+            --explosion-area-height-desktop: 250px;
+
+            --rocket-area-width-mobile: 20vw;
+            --rocket-area-height-mobile: 100vh; /* الصواريخ تمتد على طول الشاشة */
+            --rocket-area-width-desktop: 120px;
+            --rocket-area-height-desktop: 100vh;
+        }
+
+        /* ------------------------------------- */
+        /* 2. التنسيقات الأساسية للجسم والصفحة (Mobile-First) */
+        /* ------------------------------------- */
+        body {
+            background: linear-gradient(135deg, var(--darker-bg) 0%, var(--dark-bg) 100%);
+            color: var(--text-color);
+            font-family: 'Cairo', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            text-align: center;
+            position: relative;
+            /* أزلنا overflow: hidden من body لضمان أن margin السالب يعمل بشكل صحيح */
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased; /* لتحسين وضوح الخطوط على iOS */
+        }
+
+        /* ------------------------------------- */
+        /* 3. الجسيمات الخلفية (Background Particles) */
+        /* ------------------------------------- */
+        .background-particles {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden; /* أعدنا overflow: hidden هنا للجسيمات فقط */
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            animation: moveParticles linear infinite;
+        }
+
+        @keyframes moveParticles {
+            0% { transform: translateY(0) translateX(0) scale(1); opacity: 0.5; }
+            100% { transform: translateY(-100vh) translateX(50vw) scale(1.5); opacity: 0; }
+        }
+
+        /* ------------------------------------- */
+        /* 4. تأثير النار (Fire Effect) */
+        /* ------------------------------------- */
+        .fire-effect {
+            position: fixed;
+            width: 15vw; /* العرض الأصلي للنار */
+            min-width: 60px;
+            max-width: 80px;
+            height: 100vh;
+            bottom: 0;
+            z-index: 5;
+            display: flex;
+            flex-direction: column-reverse;
+            pointer-events: none;
+            overflow: hidden; /* Fire effect container needs its own overflow */
+        }
+        .fire-left {
+            left: 0;
+            margin-left: calc(-0.5 * var(--fire-effect-width, 15vw)); /* سحب لليسار بمقدار نصف عرضه */
+        }
+        .fire-right {
+            right: 0;
+            margin-right: calc(-0.5 * var(--fire-effect-width, 15vw)); /* سحب لليمين بمقدار نصف عرضه */
+        }
+        .fire-left, .fire-right {
+            --fire-effect-width: 15vw; /* تعريف المتغير ليتم استخدامه في calc */
+        }
+
+        .flame {
+            position: relative;
+            width: 80%;
+            margin: 0 auto 1.5vw auto;
+            height: 8vw;
+            min-height: 30px;
+            max-height: 40px;
+            border-radius: 50% 50% 0 0;
+            opacity: 0;
+            animation: ignite 2.5s infinite ease-out;
+            filter: blur(3px);
+            transform-origin: bottom center;
+            background: radial-gradient(circle at bottom, var(--fire-color-top) 0%, var(--fire-color-mid) 50%, var(--fire-color-base) 100%);
+            box-shadow: 0 0 8px var(--fire-color-base), 0 0 15px rgba(255, 165, 0, 0.4);
+        }
+        .flame:nth-child(1) { animation-delay: 0s; height: 9vw; min-height: 35px; max-height: 45px; }
+        .flame:nth-child(2) { animation-delay: 0.2s; height: 8.5vw; min-height: 32px; max-height: 42px; }
+        .flame:nth-child(3) { animation-delay: 0.4s; height: 7.5vw; min-height: 28px; max-height: 38px; }
+        .flame:nth-child(4) { animation-delay: 0.6s; height: 9.5vw; min-height: 38px; max-height: 48px; }
+        .flame:nth-child(5) { animation-delay: 0.8s; height: 8vw; min-height: 30px; max-height: 40px; }
+
+        @keyframes ignite {
+            0% { transform: translateY(60px) scaleX(0.4) opacity(0); }
+            20% { transform: translateY(0) scaleX(0.9) opacity(0.8); }
+            70% { transform: translateY(-30px) scaleX(0.7) opacity: 0.5; }
+            100% { transform: translateY(-70px) scaleX(0.5) opacity: 0; }
+        }
+
+        /* ------------------------------------- */
+        /* 5. تأثير الانفجار (Fireworks) - حل مشكلة المحاذاة */
+        /* ------------------------------------- */
+        .explosion-side {
+            position: fixed;
+            width: var(--explosion-area-width-mobile);
+            height: var(--explosion-area-height-mobile);
+            min-width: 100px;
+            min-height: 100px;
+            max-width: var(--explosion-area-width-desktop);
+            max-height: var(--explosion-area-height-desktop);
+            top: 10vh;
+            pointer-events: none;
+            z-index: 15;
+            filter: drop-shadow(0 0 6px var(--explosion-color-base));
+            overflow: hidden; /* مهم جداً هنا */
+            display: flex;
+            justify-content: center; /* لمركزة الشرارات داخل الحاوية */
+            align-items: center; /* لمركزة الشرارات داخل الحاوية */
+        }
+        .explosion-left {
+            left: 0;
+            /* سحب العنصر لليسار بمقدار نصف عرضه ليظهر نصفه فقط */
+            margin-left: calc(-0.5 * var(--explosion-area-width-mobile));
+        }
+        .explosion-right {
+            right: 0;
+            /* سحب العنصر لليمين بمقدار نصف عرضه ليظهر نصفه فقط */
+            margin-right: calc(-0.5 * var(--explosion-area-width-mobile));
+        }
+
+        .spark {
+            position: absolute;
+            width: 1.8vw;
+            height: 1.8vw;
+            min-width: 6px;
+            min-height: 6px;
+            max-width: 10px;
+            max-height: 10px;
+            background-color: var(--explosion-color-spark);
+            border-radius: 50%;
+            opacity: 0;
+            animation: explode-spark-infinite 1.8s ease-out infinite;
+            box-shadow: 0 0 5px var(--explosion-color-spark), 0 0 10px var(--explosion-color-base);
+        }
+
+        @keyframes explode-spark-infinite {
+            0% { opacity: 0; transform: translate(0, 0) scale(0.1); }
+            20% { opacity: 1; transform: translate(calc(var(--distance) * 0.8 * cos(var(--angle) * 0.0174533)), calc(var(--distance) * 0.8 * sin(var(--angle) * 0.0174533))) scale(0.9); }
+            80% { opacity: 0; transform: translate(calc(var(--distance) * 1.3 * cos(var(--angle) * 0.0174533)), calc(var(--distance) * 1.3 * sin(var(--angle) * 0.0174533))) scale(0.4); }
+            100% { opacity: 0; transform: translate(0, 0) scale(0.1); }
+        }
+
+        /* ------------------------------------- */
+        /* 6. تأثير الصواريخ (Rockets) - حل مشكلة المحاذاة */
+        /* ------------------------------------- */
+        .rocket-container {
+            position: fixed;
+            width: var(--rocket-area-width-mobile);
+            height: var(--rocket-area-height-mobile);
+            bottom: 0;
+            z-index: 20;
+            pointer-events: none;
+            display: flex;
+            justify-content: center; /* لمركزة الصاروخ داخل الحاوية */
+            align-items: flex-end;
+            overflow: hidden; /* مهم جداً هنا */
+        }
+        .rocket-left {
+            left: 0;
+            /* سحب العنصر لليسار بمقدار نصف عرضه ليظهر نصفه فقط */
+            margin-left: calc(-0.5 * var(--rocket-area-width-mobile));
+        }
+        .rocket-right {
+            right: 0;
+            /* سحب العنصر لليمين بمقدار نصف عرضه ليظهر نصفه فقط */
+            margin-right: calc(-0.5 * var(--rocket-area-width-mobile));
+        }
+
+        .rocket {
+            position: absolute; /* للحفاظ على موضعه بالنسبة لـ rocket-container */
+            bottom: -150px; /* يبدأ من خارج الشاشة */
+            width: 6vw;
+            height: 16vw;
+            min-width: 25px;
+            min-height: 60px;
+            max-width: 40px;
+            max-height: 100px;
+            background: linear-gradient(to bottom, var(--rocket-body) 0%, var(--rocket-body) 70%, #606060 100%);
+            border-radius: 4px 4px 1px 1px;
+            opacity: 0;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+            /* أزلنا أي تحويل translateX من هنا ليعتمد على flexbox في الحاوية */
+        }
+        .rocket::before {
+            content: '';
+            position: absolute;
+            top: -3vw;
+            left: 50%;
+            transform: translateX(-50%); /* هذا التحويل لمركزة رأس الصاروخ فقط */
+            width: 0;
+            height: 0;
+            border-left: 3vw solid transparent;
+            border-right: 3vw solid transparent;
+            border-bottom: 4vw solid var(--rocket-tip);
+            min-width: 12px;
+            min-height: 15px;
+            max-width: 20px;
+            max-height: 28px;
+            border-radius: 1px;
+        }
+        .rocket::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow:
+                -2vw 1.5vw 0 0 var(--rocket-fin),
+                2vw 1.5vw 0 0 var(--rocket-fin);
+            min-width: 8px;
+            min-height: 5px;
+            max-width: 10px;
+            max-height: 8px;
+        }
+
+        .rocket-flame {
+            position: absolute;
+            bottom: -6vw;
+            left: 50%;
+            transform: translateX(-50%); /* هذا التحويل لمركزة شعلة الصاروخ فقط */
+            width: 5vw;
+            height: 12vw;
+            min-width: 20px;
+            min-height: 40px;
+            max-width: 35px;
+            max-height: 80px;
+            background: radial-gradient(circle at center top, var(--rocket-flame-color3) 0%, var(--rocket-flame-color2) 40%, var(--rocket-flame-color1) 80%, rgba(255, 0, 0, 0) 100%);
+            border-radius: 50% 50% 10% 10%;
+            filter: blur(5px);
+            opacity: 0.9;
+            animation: rocket-flame-pulse 0.3s infinite alternate;
+            box-shadow: 0 0 12px var(--rocket-flame-color1), 0 0 25px var(--rocket-flame-color2);
+            transform-origin: center top;
+        }
+
+        @keyframes launch-rocket {
+            0% { bottom: -150px; opacity: 0; transform: scale(0.7); }
+            5% { opacity: 1; }
+            90% { bottom: 100vh; opacity: 1; transform: scale(1); }
+            100% { bottom: 150vh; opacity: 0; transform: scale(1.2); }
+        }
+
+        /* ------------------------------------- */
+        /* 7. الحاوية الرئيسية للمحتوى (Container) */
+        /* ------------------------------------- */
+        .container {
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 30px 20px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+            position: relative;
+            z-index: 30;
+            animation: fadeIn 1s ease-out forwards;
+            width: 90vw;
+            max-width: 400px;
+            box-sizing: border-box;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-size: 6vw;
+            min-font-size: 20px;
+            max-font-size: 2.2em;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            text-shadow: 0 0 6px rgba(76, 175, 80, 0.3);
+            line-height: 1.2;
+        }
+
+        h1 strong {
+            font-weight: 700;
+        }
+
+        .content-area {
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loader-wrapper {
+            position: relative;
+            width: 20vw;
+            height: 20vw;
+            min-width: 70px;
+            min-height: 70px;
+            max-width: 80px;
+            max-height: 80px;
+            margin: 20px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* حل مشكلة العداد: تأكد من أن loader-text يظهر فوق loader */
+            z-index: 1; /* مهم لضمان ظهور المحتوى فوق الـ loader نفسه */
+        }
+
+        .loader {
+            border: 1.5vw solid rgba(255, 255, 255, 0.2);
+            border-top: 1.5vw solid var(--secondary-color);
+            min-width: 60px;
+            min-height: 60px;
+            max-width: 70px;
+            max-height: 70px;
+            border-radius: 50%;
+            width: 18vw;
+            height: 18vw;
+            animation: spin var(--animation-speed) linear infinite;
+            position: absolute;
+            z-index: 0; /* تأكد أنه تحت النص */
+        }
+
+        .loader-text {
+            font-size: 4vw;
+            min-font-size: 14px;
+            max-font-size: 1.1em;
+            color: var(--text-color);
+            position: absolute;
+            font-weight: bold;
+            z-index: 2; /* اجعله فوق الدائرة */
+            background-color: transparent; /* تأكد من عدم وجود خلفية تحجب */
+        }
+
+        .main-text {
+            font-size: 4.2vw;
+            min-font-size: 14px;
+            max-font-size: 1em;
+            line-height: 1.5;
+            opacity: 0.9;
+            margin-top: 20px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .message-display {
+            display: none;
+            font-size: 6.5vw;
+            min-font-size: 20px;
+            max-font-size: 1.6em;
+            color: var(--primary-color);
+            font-weight: 700;
+            margin-top: 25px;
+            animation: scaleIn 0.5s ease-out forwards;
+        }
+        .message-display p {
+            margin: 0;
+            font-size: 1em;
+        }
+
+        .additional-info {
+            margin-top: 15px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 3.5vw;
+            min-font-size: 12px;
+            max-font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        .additional-info a {
+            color: var(--secondary-color);
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        .additional-info a:hover {
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        /* iframe للتحميل في الخلفية */
+        #ipChangeFrame {
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* ------------------------------------- */
+        /* 8. التعديلات المتجاوبة للشاشات الأكبر (Desktop/Tablet) */
+        /* ------------------------------------- */
+
+        @media (min-width: 601px) {
+            .container {
+                padding: 45px 40px;
+                width: 60vw;
+                max-width: 500px;
+            }
+            h1 {
+                font-size: 2.2em;
+            }
+            .loader-wrapper {
+                width: 100px;
+                height: 100px;
+            }
+            .loader {
+                border-width: 8px;
+                width: 80px;
+                height: 80px;
+            }
+            .loader-text {
+                font-size: 1.2em;
+            }
+            .main-text {
+                font-size: 1.1em;
+            }
+            .message-display {
+                font-size: 1.8em;
+            }
+            .additional-info {
+                font-size: 0.95em;
+            }
+
+            /* تعديل أحجام الأنميشنات للكمبيوتر */
+            .fire-effect {
+                width: 120px;
+            }
+            .fire-left, .fire-right {
+                --fire-effect-width: 120px;
+                margin-left: calc(-0.5 * var(--fire-effect-width));
+            }
+            .fire-right {
+                margin-right: calc(-0.5 * var(--fire-effect-width));
+            }
+            .flame {
+                height: 60px;
+                filter: blur(5px);
+                margin: 0 auto 5px auto;
+            }
+
+            .explosion-side {
+                width: var(--explosion-area-width-desktop);
+                height: var(--explosion-area-height-desktop);
+                top: 20vh;
+            }
+            .explosion-left {
+                margin-left: calc(-0.5 * var(--explosion-area-width-desktop));
+            }
+            .explosion-right {
+                margin-right: calc(-0.5 * var(--explosion-area-width-desktop));
+            }
+            .spark {
+                width: 10px;
+                height: 10px;
+                box-shadow: 0 0 8px var(--explosion-color-spark), 0 0 15px var(--explosion-color-base);
+            }
+
+            .rocket-container {
+                width: var(--rocket-area-width-desktop);
+                height: var(--rocket-area-height-desktop);
+            }
+            .rocket-left {
+                margin-left: calc(-0.5 * var(--rocket-area-width-desktop));
+            }
+            .rocket-right {
+                margin-right: calc(-0.5 * var(--rocket-area-width-desktop));
+            }
+            .rocket {
+                width: 35px;
+                height: 90px;
+            }
+            .rocket::before {
+                top: -15px;
+                border-left: 17.5px solid transparent;
+                border-right: 17.5px solid transparent;
+                border-bottom: 25px solid var(--rocket-tip);
+            }
+            .rocket::after {
+                box-shadow:
+                    -8px 5px 0 0 var(--rocket-fin),
+                    8px 5px 0 0 var(--rocket-fin);
+            }
+            .rocket-flame {
+                width: 30px;
+                height: 70px;
+                bottom: -35px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="fire-effect fire-left">
+        <div class="flame"></div>
+        <div class="flame"></div>
+        <div class="flame"></div>
+        <div class="flame"></div>
+        <div class="flame"></div>
+    </div>
+
+    <div class="fire-effect fire-right">
+        <div class="flame"></div>
+        <div class="flame"></div>
+        <div class="flame"></div>
+        <div class="flame"></div>
+        <div class="flame"></div>
+    </div>
+
+    <div class="background-particles"></div>
+
+    <div class="explosion-side explosion-left" id="explosionLeft" style="display: none;">
+        </div>
+
+    <div class="explosion-side explosion-right" id="explosionRight" style="display: none;">
+        </div>
+
+    <div class="rocket-container rocket-left" id="rocketLeft" style="display: none;">
+        <div class="rocket">
+            <div class="rocket-flame"></div>
+        </div>
+    </div>
+
+    <div class="rocket-container rocket-right" id="rocketRight" style="display: none;">
+        <div class="rocket">
+            <div class="rocket-flame"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1><strong>WorkTrekProxy5G</strong></h1>
+
+        <div class="content-area">
+            <div class="message-display" id="changingIpMessage" style="display: block;">
+                <div class="loader-wrapper">
+                    <div class="loader"></div>
+                    <div class="loader-text"></div>
+                </div>
+                <p class="main-text">يتم تغيير الآي بي...</p>
+            </div>
+
+            <div class="message-display" id="successContent" style="display: none;">
+                <p class="main-text">تم تغيير الآي بي بنجاح!</p>
+                <div class="additional-info">
+                    <p>انضم إلى قناة التلغرام الخاصة بنا: <a href="https://t.me/WorkTrekProxy5G" target="_blank">t.me/WorkTrekProxy5G</a></p>
+                    <p>الادمن الاساسي: <a href="https://t.me/danialoc" target="_blank">t.me/danialoc</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <iframe id="ipChangeFrame" name="ipChangeFrame"></iframe>
+
+    <audio id="fireworkSound" src="Music.mp3" autoplay muted preload="auto" loop></audio>
+
+    <script>
+        const ipChangeUrl = "https://localtonet.com/android/changeip?u=qmBr1zuJ4yAbFRZj9oHdgt3hO7KaVfe5lL83"; // رابط تغيير الـ IP الخاص بك
+
+        const changingIpMessage = document.getElementById('changingIpMessage');
+        const successContent = document.getElementById('successContent');
+        const loaderText = changingIpMessage.querySelector('.loader-text');
+        const ipChangeFrame = document.getElementById('ipChangeFrame');
+        const explosionLeft = document.getElementById('explosionLeft');
+        const explosionRight = document.getElementById('explosionRight');
+        const rocketLeftContainer = document.getElementById('rocketLeft');
+        const rocketRightContainer = document.getElementById('rocketRight');
+        const fireworkSound = document.getElementById('fireworkSound');
+
+        // إضافة ديناميكية لجسيمات الخلفية
+        function createBackgroundParticles() {
+            const particlesContainer = document.querySelector('.background-particles');
+            const numParticles = 50;
+
+            for (let i = 0; i < numParticles; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                
+                const size = Math.random() * 3 + 1;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                const startX = Math.random() * 100;
+                particle.style.left = `${startX}vw`;
+                
+                const duration = Math.random() * 6 + 3;
+                particle.style.animationDuration = `${duration}s`;
+                
+                const delay = Math.random() * 3;
+                particle.style.animationDelay = `${delay}s`;
+
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // إنشاء الشرارات ديناميكيًا للمفرقعات
+        function createSparks(explosionElement, num = 15) {
+            while (explosionElement.firstChild) {
+                explosionElement.removeChild(explosionElement.firstChild);
+            }
+            for (let i = 0; i < num; i++) {
+                const spark = document.createElement('div');
+                spark.classList.add('spark');
+                explosionElement.appendChild(spark);
+
+                const angle = Math.random() * 360;
+                const distance = Math.random() * 70 + 40;
+
+                spark.style.setProperty('--angle', angle);
+                spark.style.setProperty('--distance', distance);
+                spark.style.animationDelay = `${Math.random() * 0.7}s`;
+            }
+        }
+
+        // دالة لتشغيل صوت المفرقعات (سيحاول إلغاء الكتم)
+        function playFireworkSound() {
+            if (fireworkSound.muted) {
+                fireworkSound.muted = false;
+            }
+            fireworkSound.play().catch(e => {
+                console.warn("Autoplay was prevented or unmuting failed. User interaction needed to play sound.", e);
+            });
+        }
+
+        // دالة بدء عملية تغيير الـ IP
+        function startIpChangeProcess() {
+            changingIpMessage.style.display = 'block';
+            successContent.style.display = 'none';
+
+            ipChangeFrame.src = ipChangeUrl;
+
+            let countdown = 3;
+
+            function updateLoaderCountdown() {
+                loaderText.textContent = countdown; // هذا السطر يغير النص
+                console.log("Countdown: " + countdown); // للتأكد من أن الكود يعمل
+                if (countdown > 0) {
+                    countdown--;
+                    setTimeout(updateLoaderCountdown, 1000);
+                } else {
+                    changingIpMessage.style.display = 'none';
+                    successContent.style.display = 'block';
+
+                    // إظهار الأنميشنات وتطبيق الأنميشن للصواريخ
+                    explosionLeft.style.display = 'flex';
+                    explosionRight.style.display = 'flex';
+
+                    const rocketLeft = rocketLeftContainer.querySelector('.rocket');
+                    if (rocketLeft) {
+                        rocketLeft.style.animation = 'launch-rocket 5s linear infinite';
+                        rocketLeft.style.animationDelay = '0s';
+                        rocketLeftContainer.style.display = 'flex';
+                    }
+
+                    const rocketRight = rocketRightContainer.querySelector('.rocket');
+                    if (rocketRight) {
+                        rocketRight.style.animation = 'launch-rocket 5s linear infinite';
+                        rocketRight.style.animationDelay = '2.5s';
+                        rocketRightContainer.style.display = 'flex';
+                    }
+                    
+                    playFireworkSound();
+                }
+            }
+
+            updateLoaderCountdown();
+        }
+
+        // بدء العملية تلقائياً عند تحميل محتوى DOM بالكامل
+        document.addEventListener('DOMContentLoaded', () => {
+            createBackgroundParticles();
+            createSparks(explosionLeft, 15);
+            createSparks(explosionRight, 15);
+            startIpChangeProcess();
+        });
+    </script>
+</body>
+</html>
